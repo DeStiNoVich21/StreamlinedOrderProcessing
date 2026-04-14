@@ -1,0 +1,6 @@
+@StreamlinedOrderProcessing_HostAddress = http://localhost:5288
+
+GET {{StreamlinedOrderProcessing_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

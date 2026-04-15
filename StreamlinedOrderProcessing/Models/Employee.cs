@@ -1,11 +1,21 @@
-﻿namespace StreamlinedOrderProcessing.Models
-{
-    public class Employee(string fullName, string position)
-    {
-        public int EmployeeId { get; set; }
-        public string FullName { get; set; } = fullName;
-        public string Position { get; set; } = position;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-        public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+namespace StreamlinedOrderProcessing.Models
+{
+    [Table("Employee")]
+    public class Employee
+    {
+        [Key, Column("employee_id")]
+        public int EmployeeId { get; set; }
+
+        [Column("full_name")]
+        public string FullName { get; set; } = null!;
+
+        [Column("job_title")]
+        public string? JobTitle { get; set; }
+
+        [Column("phone")]
+        public string? Phone { get; set; }
     }
 }

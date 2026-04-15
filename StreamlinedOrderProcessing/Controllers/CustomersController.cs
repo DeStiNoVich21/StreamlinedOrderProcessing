@@ -54,13 +54,15 @@ public class CustomersController(IGenericRepository<Customer> repository) : Cont
         return Ok(results);
     }
 
-    // 5. Добавить нового клиента - только админ и менеджер
     [HttpPost]
     [AuthorizeRoles(UserRole.Admin, UserRole.Manager)]
     public async Task<ActionResult<Customer>> Create([FromBody] CustomerDto dto)
     {
-        var customer = new Customer(dto.FullName, dto.Email)
+        // Убираем параметры из скобок (), используем {}
+        var customer = new Customer
         {
+            FullName = dto.FullName,
+            Email = dto.Email,
             Address = dto.Address,
             Phone = dto.Phone
         };

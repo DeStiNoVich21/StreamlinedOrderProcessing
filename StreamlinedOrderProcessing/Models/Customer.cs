@@ -1,14 +1,26 @@
-﻿namespace StreamlinedOrderProcessing.Models
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace StreamlinedOrderProcessing.Models
 {
-    public class Customer(string fullName, string email)
+    [Table("Customer")]
+    public class Customer
     {
+        [Key, Column("customer_id")] // Явно указываем ID
         public int CustomerId { get; set; }
-        public string FullName { get; set; } = fullName;
-        public string? Email { get; set; } = email;
+
+        [Column("full_name")] // В базе full_name
+        public string FullName { get; set; } = null!;
+
+        [Column("email")]
+        public string Email { get; set; } = null!;
+
+        [Column("address")]
         public string? Address { get; set; }
+
+        [Column("phone")]
         public string? Phone { get; set; }
 
-        // Navigation Property
         public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
     }
 }

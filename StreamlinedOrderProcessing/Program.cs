@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models;
 using StreamlinedOrderProcessing.DataContext;
 using StreamlinedOrderProcessing.Repositories;
 using StreamlinedOrderProcessing.Services;
@@ -13,6 +16,44 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Streamlined Order Processing API",
+        Version = "v1"
+    });
+
+    // Настройка схемы безопасности
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http, // Используем Http для автоматической обработки Bearer
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Просто вставьте ваш JWT токен (слово Bearer добавится автоматически)"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+{
+    {
+        new OpenApiSecurityScheme
+        {
+            Reference = new OpenApiReference
+            {
+                Type = ReferenceType.SecurityScheme,
+                Id = "Bearer"
+            },
+            Scheme = "bearer", // Добавлено для совместимости
+            Name = "Bearer",
+            In = ParameterLocation.Header
+        },
+        Array.Empty<string>()
+    }
+});
+
+});
 // Database Context
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -62,7 +103,22 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
+// --- ВСТАВЬ ЭТОТ БЛОК ТУТ ---
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        // Для асинхронного вызова в синхронном методе используем .Wait() 
+        // или делаем метод Main асинхронным
+        DbInitializer.SeedUsers(context).Wait();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"--> Ошибка при инициализации БД: {ex.Message}");
+    }
+}
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {

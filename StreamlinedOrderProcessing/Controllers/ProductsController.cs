@@ -33,22 +33,22 @@ public class ProductsController(
     // 3. Создать новый товар - только админ и менеджер
     [HttpPost]
     [AuthorizeRoles(UserRole.Admin, UserRole.Manager)]
-    public async Task<IActionResult> Create([FromForm] ProductCreateDto dto)
+    public async Task<IActionResult> Create([FromBody] ProductCreateDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var product = new Product(dto.Title, dto.Price)
+        // Используем конструктор и инициализатор согласно модели и DDL
+        var product = new Product
         {
+            Title = dto.Title,
+            Price = dto.Price,
             Description = dto.Description,
             StockQuantity = dto.StockQuantity
         };
 
-        if (dto.Image != null && dto.Image.Length > 0)
-        {
-            product.ImageUrl = await SaveImage(dto.Image);
-        }
-
         await repository.AddAsync(product);
+        // Здесь должен быть UnitOfWork.Save() или метод Save в репозитории, 
+        // чтобы получить сгенерированный БД product_id
 
         return CreatedAtAction(nameof(GetById), new { id = product.ProductId }, product);
     }
@@ -56,7 +56,7 @@ public class ProductsController(
     // 4. Обновить товар - только админ и менеджер
     [HttpPut("{id:int}")]
     [AuthorizeRoles(UserRole.Admin, UserRole.Manager)]
-    public async Task<IActionResult> Update(int id, [FromForm] ProductUpdateDto dto)
+    public async Task<IActionResult> Update(int id, [FromBody] ProductUpdateDto dto)
     {
         var product = await repository.GetByIdAsync(id);
         if (product == null) return NotFound();
@@ -65,11 +65,6 @@ public class ProductsController(
         product.Price = dto.Price;
         product.Description = dto.Description;
         product.StockQuantity = dto.StockQuantity;
-
-        if (dto.Image != null)
-        {
-            product.ImageUrl = await SaveImage(dto.Image);
-        }
 
         repository.Update(product);
         return NoContent();

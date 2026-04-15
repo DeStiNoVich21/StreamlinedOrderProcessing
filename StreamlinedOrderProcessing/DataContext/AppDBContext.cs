@@ -29,6 +29,26 @@ namespace StreamlinedOrderProcessing.DataContext
             {
                 entity.SetTableName(entity.GetTableName()?.ToLower());
             }
+            // В AppDbContext.cs внутри метода OnModelCreating
+            modelBuilder.Entity<User>().HasData(
+                new User
+                {
+                    UserId = 1,
+                    Username = "admin",
+                    Role = "Admin",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+                    CreatedAt = DateTime.UtcNow
+                },
+                new User
+                {
+                    UserId = 2,
+                    Username = "worker1",
+                    Role = "Employee",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("worker123"),
+                    CreatedAt = DateTime.UtcNow
+                }
+            );
+
         }
     }
 }

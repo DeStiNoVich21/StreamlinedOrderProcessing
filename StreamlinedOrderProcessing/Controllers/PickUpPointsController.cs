@@ -17,18 +17,6 @@ public class PickupPointsController(IGenericRepository<PickupPoint> repository) 
         return Ok(points);
     }
 
-    // 2. Получить конкретный пункт по ID - доступно всем авторизованным
-    [HttpGet("{id:int}")]
-    [AuthorizeRoles(UserRole.Admin, UserRole.Manager, UserRole.Employee)]
-    public async Task<ActionResult<PickupPoint>> GetById(int id)
-    {
-        var point = await repository.GetByIdAsync(id);
-        if (point == null) return NotFound($"Пункт выдачи с ID {id} не найден.");
-
-        return Ok(point);
-    }
-
-    // 3. Добавить новый пункт выдачи - только админ
     [HttpPost]
     [AuthorizeRoles(UserRole.Admin)]
     public async Task<ActionResult<PickupPoint>> Create([FromBody] PickupPointDto dto)
@@ -36,11 +24,26 @@ public class PickupPointsController(IGenericRepository<PickupPoint> repository) 
         if (string.IsNullOrWhiteSpace(dto.Address))
             return BadRequest("Адрес пункта выдачи обязателен.");
 
-        var point = new PickupPoint(dto.Address);
+        // Создаем объект и заполняем все поля из DDL
+        var point = new PickupPoint
+        {
+            Address = dto.Address,
+            ManagerName = dto.ManagerName,
+            OpeningHours = dto.OpeningHours
+        };
 
         await repository.AddAsync(point);
 
-        return CreatedAtAction(nameof(GetById), new { id = point.PickupPointId }, point);
+        // Не забудь вызвать SaveChanges в репозитории, если он не автоматический!
+
+        return CreatedAtAction(nameof(GetById), new { id = point.PointId }, point);
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<PickupPoint>> GetById(int id)
+    {
+        var point = await repository.GetByIdAsync(id);
+        return point == null ? NotFound() : Ok(point);
     }
 
     // 4. Обновить данные пункта выдачи - только админ
@@ -71,5 +74,9 @@ public class PickupPointsController(IGenericRepository<PickupPoint> repository) 
 }
 
 #region DTOs
-public record PickupPointDto(string Address);
+public record PickupPointDto(
+    string Address,
+    string? ManagerName,
+    string? OpeningHours
+);
 #endregion

@@ -11,27 +11,28 @@ namespace StreamlinedOrderProcessing.Models
 
         [Column("customer_id")]
         public int CustomerId { get; set; }
-
-        // Свойство навигации (FK связь)
         [ForeignKey("CustomerId")]
         public virtual Customer Customer { get; set; } = null!;
 
         [Column("pickup_point_id")]
         public int PickupPointId { get; set; }
-
         [ForeignKey("PickupPointId")]
         public virtual PickupPoint PickupPoint { get; set; } = null!;
 
         [Column("employee_id")]
         public int? EmployeeId { get; set; }
-
         [ForeignKey("EmployeeId")]
         public virtual Employee? Employee { get; set; }
 
-        [Column("status")]
-        public string Status { get; set; } = "New";
+        [Column("order_date")]
+        public DateTime OrderDate { get; set; } = DateTime.UtcNow;
 
-        // Связь с позициями заказа
+        [Column("status")]
+        public string Status { get; set; } = "Processing";
+
+        [Column("total_amount")] // Соответствие DDL
+        public decimal TotalAmount { get; set; }
+
         public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     }
 }

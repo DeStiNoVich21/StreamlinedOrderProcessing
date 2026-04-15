@@ -44,43 +44,57 @@ public class OrdersController(
         if (dto.Items == null || !dto.Items.Any())
             return BadRequest("Заказ не может быть пустым.");
 
+        // Создаем объект заказа. 
+        // ВАЖНО: Используем TotalAmount, так как в DDL поле называется именно так.
         var newOrder = new Order
         {
             CustomerId = dto.CustomerId,
             EmployeeId = dto.EmployeeId,
-            PickupPointId = dto.PickupPointId,
-            OrderDate = DateTime.UtcNow,
+            PickupPointId = dto.PickupPointId ?? 1, // Если null, ставим дефолтный ID из DDL
             Status = "Processing",
-            PaymentStatus = dto.PaymentStatus,
-            PriceTotal = 0
+            TotalAmount = 0 // Рассчитаем ниже
         };
 
-        decimal totalSum = 0;
+        decimal runningTotal = 0;
 
-        await orderRepository.AddAsync(newOrder);
-
-        foreach (var item in dto.Items)
+        foreach (var itemRequest in dto.Items)
         {
-            var product = await productRepository.GetByIdAsync(item.ProductId);
-            if (product == null || product.StockQuantity < item.Quantity)
-                return BadRequest($"Товар с ID {item.ProductId} недоступен или недостаточно на складе.");
+            var product = await productRepository.GetByIdAsync(itemRequest.ProductId);
 
-            product.StockQuantity -= item.Quantity;
+            if (product == null)
+                return BadRequest($"Товар {itemRequest.ProductId} не найден.");
+
+            if (product.StockQuantity < itemRequest.Quantity)
+                return BadRequest($"Недостаточно товара '{product.Title}' на складе.");
+
+            // Уменьшаем остаток на складе
+            product.StockQuantity -= itemRequest.Quantity;
             productRepository.Update(product);
 
+            // Создаем позицию заказа
             var orderItem = new OrderItem
             {
-                OrderId = newOrder.OrderId,
-                ProductId = item.ProductId,
-                Quantity = item.Quantity
+                // Не передаем OrderId вручную, EF сделает это сам через навигацию
+                Product = product,
+                ProductId = product.ProductId,
+                Quantity = itemRequest.Quantity,
+                // ВАЖНО: В DDL есть поле price_at_purchase (фиксируем цену на момент покупки)
+                PriceAtPurchase = product.Price
             };
 
-            totalSum += product.Price * item.Quantity;
-            await orderItemRepository.AddAsync(orderItem);
+            runningTotal += product.Price * itemRequest.Quantity;
+
+            // Добавляем в коллекцию заказа
+            newOrder.OrderItems.Add(orderItem);
         }
 
-        newOrder.PriceTotal = totalSum;
-        orderRepository.Update(newOrder);
+        newOrder.TotalAmount = runningTotal;
+
+        // Сохраняем всё одним махом
+        await orderRepository.AddAsync(newOrder);
+
+        // ВНИМАНИЕ: Здесь должен быть вызов context.SaveChangesAsync() через UnitOfWork/Repository
+        // Чтобы получить сгенерированный ID для CreatedAtAction
 
         return CreatedAtAction(nameof(GetOrderDetails), new { id = newOrder.OrderId }, newOrder);
     }

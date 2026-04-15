@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using StreamlinedOrderProcessing.Models;
 using StreamlinedOrderProcessing.Repositories;
-using BCrypt.Net; // Не забудь установить пакет: dotnet add package BCrypt.Net-Next
+
 namespace StreamlinedOrderProcessing.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-// В будущем добавь [Authorize(Roles = "Admin")]
+[AuthorizeRoles(UserRole.Admin)] // Весь контроллер доступен только админам
 public class AdminController(IGenericRepository<User> userRepository) : ControllerBase
 {
     // --- БАЗОВЫЕ CRUD МЕТОДЫ ---
@@ -42,11 +42,11 @@ public class AdminController(IGenericRepository<User> userRepository) : Controll
         {
             Username = dto.Username,
             Role = dto.Role,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password) // Хешируем!
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
         };
 
         await userRepository.AddAsync(newUser);
-        // Тут должен быть вызов UnitOfWork.Save() или аналогичный
+        // Здесь должен быть SaveChanges через UnitOfWork
 
         return CreatedAtAction(nameof(GetById), new { id = newUser.UserId }, newUser);
     }
@@ -94,8 +94,6 @@ public class AdminController(IGenericRepository<User> userRepository) : Controll
 }
 
 #region DTOs (Data Transfer Objects)
-// Используем для чистоты API и безопасности паролей
-
 public record UserRegisterDto(
     string Username,
     string Password,
@@ -105,7 +103,6 @@ public record UserRegisterDto(
 public record UserUpdateDto(
     string Username,
     string Role,
-    string? NewPassword // Пароль необязателен при обновлении профиля
+    string? NewPassword
 );
-
 #endregion

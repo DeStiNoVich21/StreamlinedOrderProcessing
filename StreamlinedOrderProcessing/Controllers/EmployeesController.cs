@@ -6,19 +6,20 @@ namespace StreamlinedOrderProcessing.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-// Используем первичный конструктор для внедрения репозитория
 public class EmployeesController(IGenericRepository<Employee> repository) : ControllerBase
 {
-    // 1. Получить список всех сотрудников
+    // 1. Получить список всех сотрудников - админ и менеджер
     [HttpGet]
+    [AuthorizeRoles(UserRole.Admin, UserRole.Manager)]
     public async Task<ActionResult<IEnumerable<Employee>>> GetAll()
     {
         var employees = await repository.GetAllAsync();
         return Ok(employees);
     }
 
-    // 2. Получить сотрудника по ID
+    // 2. Получить сотрудника по ID - админ и менеджер
     [HttpGet("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin, UserRole.Manager)]
     public async Task<ActionResult<Employee>> GetById(int id)
     {
         var employee = await repository.GetByIdAsync(id);
@@ -28,8 +29,9 @@ public class EmployeesController(IGenericRepository<Employee> repository) : Cont
         return Ok(employee);
     }
 
-    // 3. Добавить нового сотрудника
+    // 3. Добавить нового сотрудника - только админ
     [HttpPost]
+    [AuthorizeRoles(UserRole.Admin)]
     public async Task<ActionResult<Employee>> Create([FromBody] EmployeeCreateDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -37,13 +39,13 @@ public class EmployeesController(IGenericRepository<Employee> repository) : Cont
         var employee = new Employee(dto.FullName, dto.Position);
 
         await repository.AddAsync(employee);
-        // Примечание: Не забудьте вызвать SaveChanges в UnitOfWork или репозитории
 
         return CreatedAtAction(nameof(GetById), new { id = employee.EmployeeId }, employee);
     }
 
-    // 4. Обновить данные сотрудника
+    // 4. Обновить данные сотрудника - только админ
     [HttpPut("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin)]
     public async Task<IActionResult> Update(int id, [FromBody] EmployeeUpdateDto dto)
     {
         var employee = await repository.GetByIdAsync(id);
@@ -56,8 +58,9 @@ public class EmployeesController(IGenericRepository<Employee> repository) : Cont
         return NoContent();
     }
 
-    // 5. Удалить сотрудника
+    // 5. Удалить сотрудника - только админ
     [HttpDelete("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin)]
     public async Task<IActionResult> Delete(int id)
     {
         var employee = await repository.GetByIdAsync(id);
@@ -67,9 +70,9 @@ public class EmployeesController(IGenericRepository<Employee> repository) : Cont
         return NoContent();
     }
 
-    // 6. Специальный метод: Поиск сотрудников по должности
-    // Полезно для фильтрации в React (например, только "Менеджеры")
+    // 6. Поиск сотрудников по должности - админ и менеджер
     [HttpGet("position/{position}")]
+    [AuthorizeRoles(UserRole.Admin, UserRole.Manager)]
     public async Task<ActionResult<IEnumerable<Employee>>> GetByPosition(string position)
     {
         var employees = await repository.FindAsync(e => e.Position.ToLower() == position.ToLower());
@@ -78,8 +81,6 @@ public class EmployeesController(IGenericRepository<Employee> repository) : Cont
 }
 
 #region DTOs
-
 public record EmployeeCreateDto(string FullName, string Position);
 public record EmployeeUpdateDto(string FullName, string Position);
-
 #endregion

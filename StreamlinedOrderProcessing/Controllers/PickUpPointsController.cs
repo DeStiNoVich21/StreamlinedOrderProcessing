@@ -6,19 +6,20 @@ namespace StreamlinedOrderProcessing.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-// Используем первичный конструктор для внедрения репозитория
 public class PickupPointsController(IGenericRepository<PickupPoint> repository) : ControllerBase
 {
-    // 1. Получить все пункты выдачи
+    // 1. Получить все пункты выдачи - доступно всем авторизованным
     [HttpGet]
+    [AuthorizeRoles(UserRole.Admin, UserRole.Manager, UserRole.Employee)]
     public async Task<ActionResult<IEnumerable<PickupPoint>>> GetAll()
     {
         var points = await repository.GetAllAsync();
         return Ok(points);
     }
 
-    // 2. Получить конкретный пункт по ID
+    // 2. Получить конкретный пункт по ID - доступно всем авторизованным
     [HttpGet("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin, UserRole.Manager, UserRole.Employee)]
     public async Task<ActionResult<PickupPoint>> GetById(int id)
     {
         var point = await repository.GetByIdAsync(id);
@@ -27,8 +28,9 @@ public class PickupPointsController(IGenericRepository<PickupPoint> repository) 
         return Ok(point);
     }
 
-    // 3. Добавить новый пункт выдачи
+    // 3. Добавить новый пункт выдачи - только админ
     [HttpPost]
+    [AuthorizeRoles(UserRole.Admin)]
     public async Task<ActionResult<PickupPoint>> Create([FromBody] PickupPointDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Address))
@@ -37,13 +39,13 @@ public class PickupPointsController(IGenericRepository<PickupPoint> repository) 
         var point = new PickupPoint(dto.Address);
 
         await repository.AddAsync(point);
-        // Примечание: Не забудьте вызвать SaveChanges в UnitOfWork или репозитории
 
         return CreatedAtAction(nameof(GetById), new { id = point.PickupPointId }, point);
     }
 
-    // 4. Обновить данные пункта выдачи
+    // 4. Обновить данные пункта выдачи - только админ
     [HttpPut("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin)]
     public async Task<IActionResult> Update(int id, [FromBody] PickupPointDto dto)
     {
         var point = await repository.GetByIdAsync(id);
@@ -55,21 +57,19 @@ public class PickupPointsController(IGenericRepository<PickupPoint> repository) 
         return NoContent();
     }
 
-    // 5. Удалить пункт выдачи
+    // 5. Удалить пункт выдачи - только админ
     [HttpDelete("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin)]
     public async Task<IActionResult> Delete(int id)
     {
         var point = await repository.GetByIdAsync(id);
         if (point == null) return NotFound();
 
-        // Проверка: перед удалением стоит убедиться, что к этому пункту не привязаны активные заказы
-        // Но для простоты текущей задачи просто удаляем
         repository.Delete(point);
         return NoContent();
     }
 }
 
 #region DTOs
-// Используем record для передачи данных
 public record PickupPointDto(string Address);
 #endregion

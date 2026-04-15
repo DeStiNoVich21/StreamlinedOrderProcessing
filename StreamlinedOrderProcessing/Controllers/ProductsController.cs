@@ -1,27 +1,27 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using StreamlinedOrderProcessing.Models;
 using StreamlinedOrderProcessing.Repositories;
-using Microsoft.EntityFrameworkCore;
 
 namespace StreamlinedOrderProcessing.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-// Использование первичного конструктора .NET 10 для внедрения зависимостей
 public class ProductsController(
     IGenericRepository<Product> repository,
     IWebHostEnvironment env) : ControllerBase
 {
-    // 1. Получить все товары
+    // 1. Получить все товары - доступно всем авторизованным
     [HttpGet]
+    [AuthorizeRoles(UserRole.Admin, UserRole.Manager, UserRole.Employee)]
     public async Task<ActionResult<IEnumerable<Product>>> GetAll()
     {
         var products = await repository.GetAllAsync();
         return Ok(products);
     }
 
-    // 2. Получить товар по ID
+    // 2. Получить товар по ID - доступно всем авторизованным
     [HttpGet("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin, UserRole.Manager, UserRole.Employee)]
     public async Task<ActionResult<Product>> GetById(int id)
     {
         var product = await repository.GetByIdAsync(id);
@@ -30,8 +30,9 @@ public class ProductsController(
         return Ok(product);
     }
 
-    // 3. Создать новый товар (с поддержкой загрузки изображения)
+    // 3. Создать новый товар - только админ и менеджер
     [HttpPost]
+    [AuthorizeRoles(UserRole.Admin, UserRole.Manager)]
     public async Task<IActionResult> Create([FromForm] ProductCreateDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -42,7 +43,6 @@ public class ProductsController(
             StockQuantity = dto.StockQuantity
         };
 
-        // Обработка изображения
         if (dto.Image != null && dto.Image.Length > 0)
         {
             product.ImageUrl = await SaveImage(dto.Image);
@@ -50,14 +50,12 @@ public class ProductsController(
 
         await repository.AddAsync(product);
 
-        // ВАЖНО: В реальном Generic Repository здесь должен вызываться SaveChanges через UnitOfWork
-        // Если метода Save в репозитории нет, добавьте его или используйте Context напрямую
-
         return CreatedAtAction(nameof(GetById), new { id = product.ProductId }, product);
     }
 
-    // 4. Обновить товар
+    // 4. Обновить товар - только админ и менеджер
     [HttpPut("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin, UserRole.Manager)]
     public async Task<IActionResult> Update(int id, [FromForm] ProductUpdateDto dto)
     {
         var product = await repository.GetByIdAsync(id);
@@ -70,8 +68,6 @@ public class ProductsController(
 
         if (dto.Image != null)
         {
-            // Удаляем старое фото, если оно было (опционально)
-            // Загружаем новое
             product.ImageUrl = await SaveImage(dto.Image);
         }
 
@@ -79,8 +75,9 @@ public class ProductsController(
         return NoContent();
     }
 
-    // 5. Удалить товар
+    // 5. Удалить товар - только админ
     [HttpDelete("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin)]
     public async Task<IActionResult> Delete(int id)
     {
         var product = await repository.GetByIdAsync(id);
@@ -90,7 +87,7 @@ public class ProductsController(
         return NoContent();
     }
 
-    // Вспомогательный метод для сохранения картинки в wwwroot/images
+    // Вспомогательный метод для сохранения картинки
     private async Task<string> SaveImage(IFormFile image)
     {
         var contentPath = env.WebRootPath;
@@ -109,9 +106,7 @@ public class ProductsController(
     }
 }
 
-#region DTOs (Data Transfer Objects)
-
-// Используем record для краткости (фишка современных C#)
+#region DTOs
 public record ProductCreateDto(
     string Title,
     decimal Price,
@@ -127,5 +122,4 @@ public record ProductUpdateDto(
     int StockQuantity,
     IFormFile? Image
 );
-
 #endregion

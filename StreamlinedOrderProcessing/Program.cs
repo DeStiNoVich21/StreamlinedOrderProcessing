@@ -1,7 +1,6 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
-// Добавьте этот using
 using StreamlinedOrderProcessing.DataContext;
 using StreamlinedOrderProcessing.Repositories;
 using StreamlinedOrderProcessing.Services;
@@ -9,60 +8,75 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add services to the container
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
-
-// --- НАСТРОЙКА SWAGGER ---
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Streamlined Order Processing API",
-        Version = "v1"
-    });
-});
+builder.Services.AddSwaggerGen();
 
+// Database Context
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Register Generic Repository
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-builder.Services.AddAuthentication("Bearer")
-    .AddJwtBearer(options =>
+
+// Register JWT Service
+builder.Services.AddScoped<JwtService>();
+
+// Configure JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-        };
-    });
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!))
+    };
+});
 
 builder.Services.AddAuthorization();
-builder.Services.AddScoped<JwtService>();
+
+// CORS for React frontend
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
-// --- ВКЛЮЧЕНИЕ SWAGGER В PIPELINE ---
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.UseSwagger(); // Генерирует JSON
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Order API V1");
-        c.RoutePrefix = string.Empty; // Делает Swagger главной страницей (localhost:5000/)
-    });
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
-// Важно для отображения картинок товаров в React
-app.UseStaticFiles();
+app.UseCors("AllowReactApp");
 
-app.UseHttpsRedirection();
+app.UseStaticFiles(); // For serving images
+
+app.UseAuthentication(); // IMPORTANT: Must be before UseAuthorization
 app.UseAuthorization();
+
 app.MapControllers();
-app.UseAuthentication(); // Кто ты?
+
 app.Run();

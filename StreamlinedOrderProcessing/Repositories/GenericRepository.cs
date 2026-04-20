@@ -24,7 +24,15 @@ namespace StreamlinedOrderProcessing.Repositories
         {
             return await _dbSet.Where(predicate).ToListAsync();
         }
-
+        public async Task<IEnumerable<T>> FindWithIncludesAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
+        {
+            IQueryable<T> query = _context.Set<T>();
+            foreach (var include in includes)
+            {
+                query = query.Include(include);
+            }
+            return await query.Where(predicate).ToListAsync();
+        }
         public async Task<T?> GetWithIncludesAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
         {
             IQueryable<T> query = _dbSet;
@@ -34,7 +42,7 @@ namespace StreamlinedOrderProcessing.Repositories
             }
             return await query.FirstOrDefaultAsync(predicate);
         }
-
+        public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
         public async Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize)
         {
             var totalCount = await _dbSet.CountAsync();

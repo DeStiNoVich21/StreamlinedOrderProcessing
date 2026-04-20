@@ -35,8 +35,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<OrderItem>().ToTable("Order_Items");
         modelBuilder.Entity<PickupPoint>().ToTable("Pickup_Point");
         modelBuilder.Entity<User>().ToTable("AppUser");
-   
 
+        modelBuilder.Entity<OrderItem>()
+    .HasOne(oi => oi.Order)
+    .WithMany(o => o.OrderItems)
+    .HasForeignKey(oi => oi.OrderId)
+    .OnDelete(DeleteBehavior.Cascade); // Вот это включит авто-удаление
         // Seed Data: Пользователи по умолчанию
         // ВНИМАНИЕ: Если ты уже сделал "пустую" миграцию, эти данные могут не добавиться 
         // автоматически через Update-Database. Но для кода они теперь видны.
@@ -58,5 +62,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 CreatedAt = DateTime.SpecifyKind(new DateTime(2026, 1, 1), DateTimeKind.Utc)
             }
         );
+
+        // Автоматически конвертируем все DateTime в UTC при сохранении в БД
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            var properties = entityType.GetProperties()
+                .Where(p => p.ClrType == typeof(DateTime) || p.ClrType == typeof(DateTime?));
+
+            foreach (var property in properties)
+            {
+                property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+                    v => v.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v, DateTimeKind.Utc),
+                    v => v));
+            }
+        }
     }
 }

@@ -89,7 +89,14 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
-
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Ёто игнорирует циклические ссылки вместо того, чтобы падать с ошибкой
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        // ѕо желанию: сохран€ем названи€ полей как в C# (PascalCase) или оставл€ем camelCase
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 // CORS for React frontend
 builder.Services.AddCors(options =>
 {

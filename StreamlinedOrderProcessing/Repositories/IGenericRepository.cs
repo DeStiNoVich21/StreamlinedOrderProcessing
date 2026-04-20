@@ -11,7 +11,8 @@ namespace StreamlinedOrderProcessing.Repositories
         Task AddAsync(T entity);
         void Update(T entity);
         void Delete(T entity);
-
+        Task SaveChangesAsync();
+        Task<IEnumerable<T>> FindWithIncludesAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes);
         // Advanced Operations
         Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
 

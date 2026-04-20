@@ -68,6 +68,7 @@ public class CustomersController(IGenericRepository<Customer> repository) : Cont
         };
 
         await repository.AddAsync(customer);
+        await repository.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = customer.CustomerId }, customer);
     }
@@ -86,6 +87,7 @@ public class CustomersController(IGenericRepository<Customer> repository) : Cont
         customer.Phone = dto.Phone;
 
         repository.Update(customer);
+        await repository.SaveChangesAsync();
         return NoContent();
     }
 
@@ -98,6 +100,8 @@ public class CustomersController(IGenericRepository<Customer> repository) : Cont
         if (customer == null) return NotFound();
 
         repository.Delete(customer);
+        await repository.SaveChangesAsync();
+
         return NoContent();
     }
 }

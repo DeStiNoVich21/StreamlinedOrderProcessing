@@ -47,6 +47,7 @@ public class AdminController(IGenericRepository<User> userRepository) : Controll
 
         await userRepository.AddAsync(newUser);
         // Здесь должен быть SaveChanges через UnitOfWork
+        userRepository.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = newUser.UserId }, newUser);
     }
@@ -68,6 +69,8 @@ public class AdminController(IGenericRepository<User> userRepository) : Controll
         }
 
         userRepository.Update(user);
+        userRepository.SaveChangesAsync();
+
         return NoContent();
     }
 
@@ -79,6 +82,7 @@ public class AdminController(IGenericRepository<User> userRepository) : Controll
         if (user == null) return NotFound();
 
         userRepository.Delete(user);
+        userRepository.SaveChangesAsync();
         return NoContent();
     }
 

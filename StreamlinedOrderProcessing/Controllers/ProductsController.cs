@@ -49,6 +49,7 @@ public class ProductsController(
         await repository.AddAsync(product);
         // Здесь должен быть UnitOfWork.Save() или метод Save в репозитории, 
         // чтобы получить сгенерированный БД product_id
+        await repository.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = product.ProductId }, product);
     }
@@ -67,6 +68,8 @@ public class ProductsController(
         product.StockQuantity = dto.StockQuantity;
 
         repository.Update(product);
+        await repository.SaveChangesAsync();
+
         return NoContent();
     }
 
@@ -79,6 +82,8 @@ public class ProductsController(
         if (product == null) return NotFound();
 
         repository.Delete(product);
+        await repository.SaveChangesAsync();
+
         return NoContent();
     }
 

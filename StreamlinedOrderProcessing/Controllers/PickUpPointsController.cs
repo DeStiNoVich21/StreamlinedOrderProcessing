@@ -33,7 +33,7 @@ public class PickupPointsController(IGenericRepository<PickupPoint> repository) 
         };
 
         await repository.AddAsync(point);
-
+        await repository.SaveChangesAsync();
         // Не забудь вызвать SaveChanges в репозитории, если он не автоматический!
 
         return CreatedAtAction(nameof(GetById), new { id = point.PointId }, point);
@@ -57,6 +57,7 @@ public class PickupPointsController(IGenericRepository<PickupPoint> repository) 
         point.Address = dto.Address;
 
         repository.Update(point);
+        await repository.SaveChangesAsync();
         return NoContent();
     }
 
@@ -69,6 +70,7 @@ public class PickupPointsController(IGenericRepository<PickupPoint> repository) 
         if (point == null) return NotFound();
 
         repository.Delete(point);
+        await repository.SaveChangesAsync();
         return NoContent();
     }
 }

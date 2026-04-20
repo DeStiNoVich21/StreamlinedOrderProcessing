@@ -17,5 +17,8 @@ namespace StreamlinedOrderProcessing.Models
 
         [Column("phone")]
         public string? Phone { get; set; }
+
+        [Column("point_id")]
+        public int? PointId { get; set; }
     }
 }

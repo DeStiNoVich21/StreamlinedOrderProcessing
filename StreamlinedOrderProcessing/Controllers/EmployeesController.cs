@@ -29,26 +29,26 @@ public class EmployeesController(IGenericRepository<Employee> repository) : Cont
         return Ok(employee);
     }
 
-    // 3. Добавить нового сотрудника
     [HttpPost]
     [AuthorizeRoles(UserRole.Admin)]
     public async Task<ActionResult<Employee>> Create([FromBody] EmployeeCreateDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        // Используем объектный инициализатор вместо конструктора
         var employee = new Employee
         {
             FullName = dto.FullName,
-            JobTitle = dto.JobTitle, // исправлено с Position
-            Phone = dto.Phone
+            JobTitle = dto.JobTitle,
+            Phone = dto.Phone,
+            PointId = dto.PointId // Привязываем точку при создании
         };
 
         await repository.AddAsync(employee);
+        await repository.SaveChangesAsync();
+
         return CreatedAtAction(nameof(GetById), new { id = employee.EmployeeId }, employee);
     }
 
-    // 4. Обновить данные
     [HttpPut("{id:int}")]
     [AuthorizeRoles(UserRole.Admin)]
     public async Task<IActionResult> Update(int id, [FromBody] EmployeeUpdateDto dto)
@@ -57,10 +57,12 @@ public class EmployeesController(IGenericRepository<Employee> repository) : Cont
         if (employee == null) return NotFound();
 
         employee.FullName = dto.FullName;
-        employee.JobTitle = dto.JobTitle; // исправлено с Position
+        employee.JobTitle = dto.JobTitle;
         employee.Phone = dto.Phone;
+        employee.PointId = dto.PointId; // Обновляем привязку к точке
 
         repository.Update(employee);
+        await repository.SaveChangesAsync();
         return NoContent();
     }
 
@@ -74,9 +76,30 @@ public class EmployeesController(IGenericRepository<Employee> repository) : Cont
             e.JobTitle != null && e.JobTitle.ToLower() == position.ToLower());
         return Ok(employees);
     }
+    // 5. Удалить сотрудника
+    [HttpDelete("{id:int}")]
+    [AuthorizeRoles(UserRole.Admin)] // Удаление разрешено только админу
+    public async Task<IActionResult> Delete(int id)
+    {
+        var employee = await repository.GetByIdAsync(id);
 
-    // Не забудь обновить DTO
-    public record EmployeeCreateDto(string FullName, string? JobTitle, string? Phone);
-    public record EmployeeUpdateDto(string FullName, string? JobTitle, string? Phone);
+        if (employee == null)
+            return NotFound(new { message = $"Сотрудник с ID {id} не найден" });
+
+        try
+        {
+            repository.Delete(employee);
+            await repository.SaveChangesAsync();
+            return NoContent(); // Успешное удаление без возврата данных
+        }
+        catch (Exception)
+        {
+            // Обработка ошибки, если сотрудник привязан к заказам (Foreign Key constraint)
+            return BadRequest(new { message = "Не удалось удалить сотрудника. Возможно, он указан в существующих заказах." });
+        }
+    }
+    // Обновленные DTO с поддержкой PointId
+    public record EmployeeCreateDto(string FullName, string? JobTitle, string? Phone, int? PointId);
+    public record EmployeeUpdateDto(string FullName, string? JobTitle, string? Phone, int? PointId);
 }
 
